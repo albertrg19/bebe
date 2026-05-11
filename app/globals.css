@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Pink scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #fff0f5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #f06292, #e91e8c);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #e91e8c, #c2185b);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #f06292 #fff0f5;
+}
+
+/* Editable field styling */
+[contenteditable="true"] {
+  outline: none;
+  border: 2px dashed #e91e8c;
+  border-radius: 6px;
+  padding: 2px 6px;
+  min-width: 60px;
+  transition: border-color 0.2s ease;
+}
+
+[contenteditable="true"]:focus {
+  border-color: #c2185b;
+  background-color: rgba(255, 214, 231, 0.3);
+}
+
+/* Memory card styles */
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+
+.card-front,
+.card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-front {
+  transform: rotateY(180deg);
+  background: white;
+}
+
+.card-back {
+  background: linear-gradient(135deg, #f06292, #e91e8c);
+}
+
+/* Scroll progress bar */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #f06292, #e91e8c, #c2185b);
+  z-index: 9999;
+  transform-origin: left;
+}
+
+/* Touch device active states - replaces hover on touch */
+@media (hover: none) and (pointer: coarse) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .touch-active:active {
+    transform: scale(0.97);
+    opacity: 0.85;
+    transition: transform 0.1s ease, opacity 0.1s ease;
+  }
+}
+
+/* Minimum touch targets for interactive elements on mobile */
+@media (max-width: 480px) {
+  button,
+  a,
+  [role="button"] {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Hamburger menu styles */
+.hamburger-line {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background-color: #c2185b;
+  border-radius: 2px;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* Mobile dropdown menu */
+.mobile-nav-dropdown {
+  overflow: hidden;
+}
