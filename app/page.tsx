@@ -12,6 +12,9 @@ import MemoryGame from '@/components/MemoryGame'
 import EditMode from '@/components/EditMode'
 import Footer from '@/components/Footer'
 
+import LoveLetters from '@/components/LoveLetters'
+import BucketList from '@/components/BucketList'
+
 export default function Home() {
   return (
     <EditModeProvider>
@@ -23,7 +26,9 @@ export default function Home() {
         <Songs />
         <GamesSection />
         <MemoryCalendar />
+        <LoveLetters />
         <MemoryGame />
+        <BucketList />
       </main>
       <Footer />
       <EditMode />

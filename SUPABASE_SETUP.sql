@@ -138,3 +138,51 @@ INSERT INTO site_content (key, value) VALUES
   ('games', '["Valorant","Minecraft","Genshin Impact","League of Legends","Mobile Legends"]'),
   ('startDate', '2025-05-23')
 ON CONFLICT (key) DO NOTHING;
+-- ============================================
+-- TABLE 3: love_letters
+-- Stores sticky notes/love letters
+-- ============================================
+CREATE TABLE IF NOT EXISTS love_letters (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  author TEXT NOT NULL,
+  content TEXT NOT NULL,
+  theme_color TEXT DEFAULT 'pink',
+  position_x REAL,
+  position_y REAL,
+  rotation REAL,
+  photo_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ============================================
+-- TABLE 4: bucket_list
+-- Stores dreams and goals
+-- ============================================
+CREATE TABLE IF NOT EXISTS bucket_list (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  is_completed BOOLEAN DEFAULT false,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ============================================
+-- ENABLE RLS FOR NEW TABLES
+-- ============================================
+ALTER TABLE love_letters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bucket_list ENABLE ROW LEVEL SECURITY;
+
+-- ============================================
+-- RLS POLICIES FOR love_letters
+-- ============================================
+CREATE POLICY "Allow public read on love_letters" ON love_letters FOR SELECT TO anon USING (true);
+CREATE POLICY "Allow public insert on love_letters" ON love_letters FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "Allow public delete on love_letters" ON love_letters FOR DELETE TO anon USING (true);
+
+-- ============================================
+-- RLS POLICIES FOR bucket_list
+-- ============================================
+CREATE POLICY "Allow public read on bucket_list" ON bucket_list FOR SELECT TO anon USING (true);
+CREATE POLICY "Allow public insert on bucket_list" ON bucket_list FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "Allow public update on bucket_list" ON bucket_list FOR UPDATE TO anon USING (true);
+CREATE POLICY "Allow public delete on bucket_list" ON bucket_list FOR DELETE TO anon USING (true);

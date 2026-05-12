@@ -13,6 +13,8 @@ const navLinks: { label: string; href: string }[] = [
   { label: 'Our Story', href: '#our-story' },
   { label: 'Songs', href: '#songs' },
   { label: 'Memories', href: '#memories' },
+  { label: 'Notes', href: '#love-letters' },
+  { label: 'Bucket List', href: '#bucket-list' },
   { label: 'Game', href: '#game' },
 ]
 
