@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS site_content (
 -- ============================================
 CREATE TABLE IF NOT EXISTS calendar_photos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  date TEXT NOT NULL UNIQUE,
+  date TEXT NOT NULL,
   photo_url TEXT NOT NULL,
   caption TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
@@ -81,6 +81,13 @@ CREATE POLICY "Allow public update on calendar_photos"
   TO anon
   USING (true)
   WITH CHECK (true);
+
+-- Allow public delete access
+CREATE POLICY "Allow public delete on calendar_photos"
+  ON calendar_photos
+  FOR DELETE
+  TO anon
+  USING (true);
 
 -- ============================================
 -- STORAGE: Create the 'memories' bucket

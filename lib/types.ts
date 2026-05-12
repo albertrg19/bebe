@@ -24,6 +24,7 @@ export interface GameItem {
   id: string
   name: string
   imageUrl?: string
+  gallery?: string[]
 }
 
 export interface CalendarPhoto {

@@ -4,6 +4,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useEditMode } from '@/context/EditModeContext'
 import { supabase } from '@/lib/supabase'
 import Image from 'next/image'
@@ -17,9 +18,11 @@ export default function GamesSection() {
   const galleryRef = useRef<HTMLDivElement>(null)
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])
   const imageInputsRef = useRef<(HTMLInputElement | null)[]>([])
+  const galleryInputRef = useRef<HTMLInputElement>(null)
 
   const [games, setGames] = useState<GameItem[]>([])
   const { isEditMode } = useEditMode()
+  const [activeGameIndex, setActiveGameIndex] = useState<number | null>(null)
 
   const loadContent = useCallback(async () => {
     try {
@@ -33,12 +36,13 @@ export default function GamesSection() {
         try {
           const parsed: unknown = JSON.parse(data.value)
           if (Array.isArray(parsed)) {
-            // Convert old strings to GameItems
             const formattedGames: GameItem[] = parsed.map((item, i) => {
               if (typeof item === 'string') {
-                return { id: `game-${Date.now()}-${i}`, name: item }
+                return { id: `game-${Date.now()}-${i}`, name: item, gallery: [] }
               }
-              return item as GameItem
+              const gameObj = item as GameItem
+              if (!gameObj.gallery) gameObj.gallery = []
+              return gameObj
             })
             setGames(formattedGames)
           }
@@ -99,7 +103,7 @@ export default function GamesSection() {
   }, { scope: sectionRef, dependencies: [games.length] })
 
   const addGame = () => {
-    const newGames = [...games, { id: `game-${Date.now()}`, name: 'New Game' }]
+    const newGames = [...games, { id: `game-${Date.now()}`, name: 'New Game', gallery: [] }]
     setGames(newGames)
     saveGamesToDB(newGames)
   }
@@ -114,7 +118,6 @@ export default function GamesSection() {
     const newGames = [...games]
     newGames[index].name = newName
     setGames(newGames)
-    // Actually save to DB here
     saveGamesToDB(newGames)
   }
 
@@ -137,11 +140,53 @@ export default function GamesSection() {
       setGames(newGames)
       saveGamesToDB(newGames)
       
-    } catch (err) {
+    } catch (err: any) {
       console.error('Upload error:', err)
-      alert('Failed to upload game image.')
+      alert(`Failed to upload game image: ${err.message || JSON.stringify(err)}`)
     }
   }
+
+  const handleGalleryUpload = async (file: File) => {
+    if (activeGameIndex === null) return
+    try {
+      const ext = file.name.split('.').pop() || 'jpg'
+      const fileName = `gallery-${Date.now()}-${activeGameIndex}.${ext}`
+      const filePath = `games/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('memories')
+        .upload(filePath, file, { cacheControl: '3600', upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from('memories').getPublicUrl(filePath)
+      
+      const newGames = [...games]
+      const game = newGames[activeGameIndex]
+      if (!game.gallery) game.gallery = []
+      game.gallery.push(urlData.publicUrl)
+      
+      setGames(newGames)
+      saveGamesToDB(newGames)
+      
+    } catch (err: any) {
+      console.error('Upload error:', err)
+      alert(`Failed to upload gallery image: ${err.message || JSON.stringify(err)}`)
+    }
+  }
+
+  const removeGalleryImage = (imgIndex: number) => {
+    if (activeGameIndex === null) return
+    const newGames = [...games]
+    const game = newGames[activeGameIndex]
+    if (game.gallery) {
+      game.gallery = game.gallery.filter((_, i) => i !== imgIndex)
+      setGames(newGames)
+      saveGamesToDB(newGames)
+    }
+  }
+
+  const activeGame = activeGameIndex !== null ? games[activeGameIndex] : null
 
   return (
     <section
@@ -159,7 +204,7 @@ export default function GamesSection() {
 
         <div
           ref={galleryRef}
-          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6"
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6 items-start"
         >
           {games.map((game, index) => (
             <div
@@ -170,7 +215,13 @@ export default function GamesSection() {
               {/* Image Container */}
               <div 
                 className="relative w-full aspect-square rounded-xl overflow-hidden bg-pink-50 flex items-center justify-center mb-3 cursor-pointer shadow-inner"
-                onClick={() => isEditMode && imageInputsRef.current[index]?.click()}
+                onClick={() => {
+                  if (isEditMode) {
+                    imageInputsRef.current[index]?.click()
+                  } else {
+                    setActiveGameIndex(index)
+                  }
+                }}
               >
                 {game.imageUrl ? (
                   <Image src={game.imageUrl} alt={game.name} fill className="object-cover" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw" />
@@ -211,6 +262,13 @@ export default function GamesSection() {
                 >
                   {game.name}
                 </p>
+                
+                <button
+                  onClick={() => setActiveGameIndex(index)}
+                  className="mt-1.5 font-body text-[10px] sm:text-xs font-medium px-3 py-1 rounded-full bg-pink-soft/30 text-pink-rose hover:bg-pink-soft hover:text-pink-deep transition-colors"
+                >
+                  {game.gallery?.length ? `${game.gallery.length} Photos` : 'View Gallery'}
+                </button>
               </div>
 
               {/* Remove Button */}
@@ -230,14 +288,116 @@ export default function GamesSection() {
           {isEditMode && (
             <div 
               onClick={addGame}
-              className="flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm rounded-2xl p-4 border-2 border-dashed border-pink-rose/50 cursor-pointer hover:bg-pink-50/50 hover:border-pink-rose transition-colors aspect-square min-h-[160px]"
+              className="flex flex-col items-center bg-white/40 backdrop-blur-sm rounded-2xl p-3 sm:p-4 border-2 border-dashed border-pink-rose/50 cursor-pointer hover:bg-pink-50/50 hover:border-pink-rose transition-colors"
             >
-              <span className="text-3xl text-pink-rose mb-2">+</span>
-              <span className="font-heading font-semibold text-pink-rose text-sm">Add Game</span>
+              <div className="w-full aspect-square rounded-xl flex flex-col items-center justify-center bg-pink-50/50">
+                <span className="text-3xl text-pink-rose mb-2">+</span>
+                <span className="font-heading font-semibold text-pink-rose text-sm">Add Game</span>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Gallery Modal */}
+      <AnimatePresence>
+        {activeGame !== null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-0 sm:p-4 backdrop-blur-sm"
+            onClick={() => setActiveGameIndex(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full h-full sm:h-auto sm:max-h-[90vh] sm:w-[90vw] md:max-w-4xl bg-white rounded-none sm:rounded-3xl shadow-2xl flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-pink-100 flex-shrink-0">
+                <div>
+                  <h3 className="font-heading text-xl sm:text-2xl font-bold text-pink-deep">
+                    {activeGame.name} Gallery 📸
+                  </h3>
+                  <p className="font-body text-xs sm:text-sm text-pink-hot/70 mt-1">
+                    {activeGame.gallery?.length || 0} photos
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveGameIndex(null)}
+                  className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-pink-soft/30 text-pink-deep font-bold hover:bg-pink-soft active:bg-pink-rose/30 transition-colors text-lg sm:text-xl"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Modal Body (Scrollable Grid) */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+                  
+                  {activeGame.gallery?.map((imgUrl, idx) => (
+                    <div key={idx} className="relative aspect-square rounded-xl overflow-hidden bg-black group shadow-md">
+                      <Image 
+                        src={imgUrl} 
+                        alt={`${activeGame.name} screenshot ${idx + 1}`} 
+                        fill 
+                        className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                        sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+                      />
+                      
+                      {isEditMode && (
+                        <button
+                          onClick={() => removeGalleryImage(idx)}
+                          className="absolute top-2 right-2 w-8 h-8 bg-red-500/90 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 hover:scale-110 transition-all font-bold opacity-0 group-hover:opacity-100"
+                          aria-label="Remove photo"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Add Photo Button */}
+                  {isEditMode && (
+                    <div 
+                      onClick={() => galleryInputRef.current?.click()}
+                      className="aspect-square flex flex-col items-center justify-center bg-pink-50 rounded-xl border-2 border-dashed border-pink-rose/40 cursor-pointer hover:bg-pink-100 hover:border-pink-rose transition-colors"
+                    >
+                      <span className="text-3xl text-pink-rose mb-1">+</span>
+                      <span className="font-heading font-semibold text-pink-rose text-xs">Add Photo</span>
+                    </div>
+                  )}
+
+                  {(!activeGame.gallery || activeGame.gallery.length === 0) && !isEditMode && (
+                    <div className="col-span-full py-12 text-center">
+                      <span className="text-5xl opacity-40 mb-3 block">📸</span>
+                      <p className="font-body text-pink-hot/60">No photos added yet.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <input 
+        type="file" 
+        accept="image/*" 
+        className="hidden" 
+        ref={galleryInputRef}
+        onChange={e => {
+          const file = e.target.files?.[0]
+          if (file) {
+            handleGalleryUpload(file)
+            if (galleryInputRef.current) galleryInputRef.current.value = ''
+          }
+        }}
+      />
     </section>
   )
 }

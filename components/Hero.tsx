@@ -68,59 +68,27 @@ export default function Hero() {
     loadContent()
   }, [loadContent])
 
+  // Animate timer, profiles, and hours only ONCE on mount
   useGSAP(() => {
-    if (name1Ref.current) {
-      const letters1 = name1Ref.current.querySelectorAll('.letter')
-      gsap.from(letters1, {
-        y: 60,
-        opacity: 0,
-        stagger: 0.04,
-        ease: 'power3.out',
-        duration: 0.8,
-        delay: 0.3,
-      })
-    }
-
-    if (name2Ref.current) {
-      const letters2 = name2Ref.current.querySelectorAll('.letter')
-      gsap.from(letters2, {
-        y: 60,
-        opacity: 0,
-        stagger: 0.04,
-        ease: 'power3.out',
-        duration: 0.8,
-        delay: 0.5,
-      })
-    }
-
     if (timerBoxRef.current) {
-      gsap.from(timerBoxRef.current, {
-        scale: 0.8,
-        opacity: 0,
-        duration: 1,
-        ease: 'elastic.out(1, 0.5)',
-        delay: 0.8,
-      })
+      gsap.fromTo(timerBoxRef.current, 
+        { scale: 0.8, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 1, ease: 'elastic.out(1, 0.5)', delay: 0.8 }
+      )
     }
 
     if (profile1Ref.current) {
-      gsap.from(profile1Ref.current, {
-        scale: 0,
-        rotation: -15,
-        duration: 0.8,
-        ease: 'back.out(1.7)',
-        delay: 0.2,
-      })
+      gsap.fromTo(profile1Ref.current,
+        { scale: 0, rotation: -15 },
+        { scale: 1, rotation: 0, duration: 0.8, ease: 'back.out(1.7)', delay: 0.2 }
+      )
     }
 
     if (profile2Ref.current) {
-      gsap.from(profile2Ref.current, {
-        scale: 0,
-        rotation: -15,
-        duration: 0.8,
-        ease: 'back.out(1.7)',
-        delay: 0.4,
-      })
+      gsap.fromTo(profile2Ref.current,
+        { scale: 0, rotation: -15 },
+        { scale: 1, rotation: 0, duration: 0.8, ease: 'back.out(1.7)', delay: 0.4 }
+      )
     }
 
     if (hoursRef.current) {
@@ -141,6 +109,25 @@ export default function Hero() {
           }
         },
       })
+    }
+  }, { scope: sectionRef })
+
+  // Animate names whenever they change
+  useGSAP(() => {
+    if (name1Ref.current) {
+      const letters1 = name1Ref.current.querySelectorAll('.letter')
+      gsap.fromTo(letters1, 
+        { y: 60, opacity: 0 },
+        { y: 0, opacity: 1, stagger: 0.04, ease: 'power3.out', duration: 0.8 }
+      )
+    }
+
+    if (name2Ref.current) {
+      const letters2 = name2Ref.current.querySelectorAll('.letter')
+      gsap.fromTo(letters2,
+        { y: 60, opacity: 0 },
+        { y: 0, opacity: 1, stagger: 0.04, ease: 'power3.out', duration: 0.8 }
+      )
     }
   }, { scope: sectionRef, dependencies: [name1, name2] })
 

@@ -114,10 +114,53 @@ export default function Songs() {
       console.error('Error loading songs:', err)
     }
   }, [])
+  const [hasAutoPlayed, setHasAutoPlayed] = useState<boolean>(false)
+  const [showPlayPrompt, setShowPlayPrompt] = useState<boolean>(false)
 
   useEffect(() => {
     loadContent()
   }, [loadContent])
+
+  // Attempt autoplay of song 1 after audio is ready
+  useEffect(() => {
+    if (hasAutoPlayed) return
+    const audio = audioRefs.current[0]
+    if (!audio || !songs[0]?.audioUrl) return
+
+    const tryAutoPlay = () => {
+      audio.play()
+        .then(() => {
+          setPlayingIndex(0)
+          setHasAutoPlayed(true)
+        })
+        .catch(() => {
+          // Browser blocked autoplay — show a gentle prompt
+          setShowPlayPrompt(true)
+          setHasAutoPlayed(true)
+
+          const handleUserInteraction = () => {
+            const a = audioRefs.current[0]
+            if (a) {
+              a.play()
+                .then(() => {
+                  setPlayingIndex(0)
+                  setShowPlayPrompt(false)
+                })
+                .catch(() => { /* still blocked, give up */ })
+            }
+            document.removeEventListener('click', handleUserInteraction)
+            document.removeEventListener('touchstart', handleUserInteraction)
+          }
+
+          document.addEventListener('click', handleUserInteraction, { once: true })
+          document.addEventListener('touchstart', handleUserInteraction, { once: true })
+        })
+    }
+
+    // Small delay to let the audio element load
+    const timer = setTimeout(tryAutoPlay, 1500)
+    return () => clearTimeout(timer)
+  }, [songs, hasAutoPlayed])
 
   useGSAP(() => {
     if (titleRef.current) {
@@ -134,21 +177,7 @@ export default function Songs() {
       })
     }
 
-    const cards = cardRefs.current.filter(Boolean)
-    if (cards.length > 0) {
-      gsap.from(cards, {
-        x: -40,
-        opacity: 0,
-        stagger: 0.15,
-        duration: 0.7,
-        ease: 'power2.out',
-        scrollTrigger: {
-          trigger: cards[0],
-          start: 'top 85%',
-          toggleActions: 'play none none none',
-        },
-      })
-    }
+    // Removed buggy GSAP animation for cards that hides them on hash navigation
   }, { scope: sectionRef })
 
   const togglePlay = (index: number) => {
@@ -256,6 +285,15 @@ export default function Songs() {
       id="songs"
       className="relative py-10 sm:py-14 lg:py-20 px-4 sm:px-8 lg:px-16 z-10"
     >
+      {/* Autoplay prompt — shown when browser blocks autoplay */}
+      {showPlayPrompt && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+          <div className="px-5 py-2.5 rounded-full bg-gradient-to-r from-pink-rose to-pink-hot text-white font-body font-semibold text-sm shadow-xl shadow-pink-hot/40 flex items-center gap-2">
+            <span>🎵</span>
+            <span>Tap anywhere to play music</span>
+          </div>
+        </div>
+      )}
       <div className="max-w-lg md:max-w-xl lg:max-w-2xl mx-auto">
         <h2
           ref={titleRef}
@@ -311,17 +349,39 @@ export default function Songs() {
                       data-edit-key={isEditMode ? song.titleKey : undefined}
                       contentEditable={isEditMode}
                       suppressContentEditableWarning
-                      className="font-heading text-lg sm:text-xl lg:text-2xl font-bold text-pink-deep truncate"
+                      onBlur={(e) => {
+                        const newTitle = e.currentTarget.textContent || 'Unknown Title'
+                        if (newTitle !== song.title) {
+                          setSongs(prev => {
+                            const newSongs = [...prev]
+                            newSongs[index].title = newTitle
+                            return newSongs
+                          })
+                          supabase.from('site_content').upsert({ key: song.titleKey, value: newTitle }, { onConflict: 'key' })
+                        }
+                      }}
+                      className="font-heading text-lg sm:text-xl lg:text-2xl font-bold text-pink-deep truncate outline-none focus:border-b-2 focus:border-pink-rose"
                     >
-                      {song.title}
+                      {song.title.replace(/&#x27;/g, "'")}
                     </h3>
                     <p
                       data-edit-key={isEditMode ? song.artistKey : undefined}
                       contentEditable={isEditMode}
                       suppressContentEditableWarning
-                      className="font-body text-sm sm:text-base lg:text-lg text-pink-hot/80 truncate mt-0.5 sm:mt-1"
+                      onBlur={(e) => {
+                        const newArtist = e.currentTarget.textContent || 'Unknown Artist'
+                        if (newArtist !== song.artist) {
+                          setSongs(prev => {
+                            const newSongs = [...prev]
+                            newSongs[index].artist = newArtist
+                            return newSongs
+                          })
+                          supabase.from('site_content').upsert({ key: song.artistKey, value: newArtist }, { onConflict: 'key' })
+                        }
+                      }}
+                      className="font-body text-sm sm:text-base lg:text-lg text-pink-hot/80 truncate mt-0.5 sm:mt-1 outline-none focus:border-b-2 focus:border-pink-rose"
                     >
-                      {song.artist}
+                      {song.artist.replace(/&#x27;/g, "'")}
                     </p>
                   </div>
 
